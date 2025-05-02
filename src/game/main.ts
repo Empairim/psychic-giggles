@@ -11,8 +11,7 @@ type Player = {
   pointer?: Phaser.Input.Pointer;
 };
 
-type Enemy = {
-  sprite: Phaser.Physics.Arcade.Sprite;
+type Enemy = Phaser.Physics.Arcade.Sprite & {
   moveSpeed: number;
   health: number;
 };
@@ -39,24 +38,51 @@ function preload(this: Phaser.Scene) {
 
 //CREATE game Objects
 function create(this: Phaser.Scene) {
+  //DEBUG TOOLS////////////////
+  //FPS
   fpsText = this.add.text(10, 10, "FPS: 0", {
     font: "16px Arial",
   });
 
+  // Draw world bounds
+  const worldBoundsGraphics = this.add.graphics();
+  worldBoundsGraphics.lineStyle(2, 0xff0000, 1); // Red line with 2px thickness
+  worldBoundsGraphics.strokeRect(
+    this.physics.world.bounds.x,
+    this.physics.world.bounds.y,
+    this.physics.world.bounds.width,
+    this.physics.world.bounds.height
+  );
+  /////////////////////////////////////
+
+  //MISC
+  let camera = this.cameras.main;
+  camera.setBackgroundColor(0x000000);
+
+  //
+
+  //GAME STATE OBJECTS
   gameState = {
     player: {
       sprite: this.physics.add.sprite(512, 384, "player"),
       moveSpeed: 200,
       health: 100,
     },
-    enemies: this.physics.add.group({}),
+    enemies: this.physics.add.group({
+      createCallback: (enemy) => {
+        configureEnemy(enemy as Enemy);
+      },
+    }),
     bullets: this.physics.add.group({
       createCallback: (bullet) => {
         configureBullet(bullet as Bullet);
       },
     }),
   };
-
+  camera.startFollow(gameState.player.sprite);
+  (
+    gameState.player.sprite.body as Phaser.Physics.Arcade.Body
+  ).setCollideWorldBounds(true); //it can be either static or dynamic so hard typing that its dynamic
   //KEY Inputs
   gameState.player.inputKeys = this.input.keyboard?.addKeys({
     up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -71,6 +97,12 @@ function create(this: Phaser.Scene) {
       createBullet(gameState);
     }
   });
+  this.physics.world.on("worldbounds", (body: Phaser.Physics.Arcade.Body) => {
+    const bullet = body.gameObject as Bullet; // Get the bullet from the body
+    if (bullet && bullet.active) {
+      gameState.bullets.killAndHide(bullet);
+    }
+  });
 }
 //////////
 
@@ -78,6 +110,7 @@ function create(this: Phaser.Scene) {
 function update(this: Phaser.Scene) {
   const fps = this.game.loop.actualFps; // Get the current FPS
   fpsText.setText(`FPS: ${Math.round(fps)}`);
+
   ///GAME LOGIC////
   movePlayer(gameState.player);
 }
@@ -108,7 +141,6 @@ function createBullet(gameState: GameState) {
   const player = gameState.player.sprite;
   const pointer = gameState.player.pointer;
   const bullet = gameState.bullets.get(player.x, player.y, "bullet") as Bullet;
-
   if (bullet) {
     bullet.setActive(true);
     bullet.setVisible(true);
@@ -117,8 +149,8 @@ function createBullet(gameState: GameState) {
       const angle = Phaser.Math.Angle.Between(
         player.x,
         player.y,
-        pointer.x,
-        pointer.y
+        pointer.worldX, //more accurate
+        pointer.worldY //takes into account cam movement
       );
       bullet.setRotation(angle);
       bullet.setVelocity(
@@ -129,10 +161,50 @@ function createBullet(gameState: GameState) {
   }
 }
 
+function createEnemySpawner(
+  scene: Phaser.Scene,
+  enemyGroup: Phaser.Physics.Arcade.Group,
+  spawnRate: number = 2000,
+  maxEnemies: number = 50
+) {
+  let waveCount = 1;
+
+  // Spawn enemies at regular intervals
+  scene.time.addEvent({
+    delay: spawnRate,
+    loop: true,
+    callback: () => {
+      if (enemyGroup.countActive(true) < maxEnemies) {
+        const spawnX = Math.random() > 0.5 ? -50 : scene.scale.width + 50;
+        const spawnY = Math.random() * scene.scale.height;
+        const enemy = gameState.enemies.get(spawnX, spawnY, "enemy") as Enemy;
+        enemyGroup.add(enemy);
+      }
+
+      // Increase difficulty over time
+      waveCount++;
+      if (waveCount % 5 === 0) {
+        spawnRate *= 0.9; // Increase spawn speed
+        maxEnemies += 5; // More enemies per wave
+      }
+    },
+  });
+}
+
+//////////
 //HELPER FUNCTIONS//////// allows me to pass types to groups without classes
 function configureBullet(bullet: Bullet) {
   bullet.damage = 10;
   bullet.moveSpeed = 300;
+
+  (bullet.body as Phaser.Physics.Arcade.Body).setCollideWorldBounds(true);
+  (bullet.body as Phaser.Physics.Arcade.Body).onWorldBounds = true; // Trigger events when hitting world bounds
+  (bullet.body as Phaser.Physics.Arcade.Body).enable = true;
+}
+
+function configureEnemy(enemy: Enemy) {
+  enemy.health = 10;
+  enemy.moveSpeed = 300;
 }
 //////////
 
