@@ -29,27 +29,23 @@ type GameState = {
 
 let gameState: GameState;
 let fpsText: Phaser.GameObjects.Text;
-/////////////
 //
 //
 //
-// ////
 //
-//
-// /////
 
-// PRELOAD assets//////
+// PRELOAD assets
 function preload(this: Phaser.Scene) {
   // Load assets here (images, spritesheets, etc.)
   this.load.image("background", "assets/bg.png");
 }
-//////
 //
 //
-// /
+//
+//
 //CREATE game Objects
 function create(this: Phaser.Scene) {
-  //DEBUG TOOLS////////////////
+  //DEBUG TOOLS
   //FPS
   fpsText = this.add.text(10, 10, "FPS: 0", {
     font: "16px Arial",
@@ -64,11 +60,11 @@ function create(this: Phaser.Scene) {
     this.physics.world.bounds.width,
     this.physics.world.bounds.height
   );
-  //////////
   //
   //
   //
-  // ///////////////////////////
+  //
+  //
 
   //GAME STATE OBJECTS
   gameState = {
@@ -90,16 +86,17 @@ function create(this: Phaser.Scene) {
     }),
   };
   createEnemySpawner(this, gameState.enemies);
-  /////
-  // ///
-  //
-  // /
 
-  /////VISUALS and FX MANAGERS////
+  //
+  //
+  //
+  //
+
+  /////VISUALS and FX MANAGERS
 
   // Camera Lights Shadow setup
   this.lights.enable();
-  this.lights.addLight(512, 384, 400, 0xffffff, 1.5);
+  this.lights.addLight(512, 384, 400, 0xffa500, 2);
 
   const camera = this.cameras.main;
   camera.setBackgroundColor(0x000000);
@@ -107,15 +104,15 @@ function create(this: Phaser.Scene) {
   background.setAlpha(0.5);
   background.setPipeline("Light2D");
 
+  //EFFECTS FOR PLAYER
   camera.startFollow(gameState.player.sprite);
   gameState.player.sprite.setPipeline("Light2D");
-  (
-    gameState.player.sprite.body as Phaser.Physics.Arcade.Body
-  ).setCollideWorldBounds(true); //it can be either static or dynamic so hard typing that its dynamic
 
-  //KEY Inputs//////
   //
-  // /
+  //
+  //
+
+  // Inputs
   gameState.player.inputKeys = this.input.keyboard?.addKeys({
     up: Phaser.Input.Keyboard.KeyCodes.W,
     down: Phaser.Input.Keyboard.KeyCodes.S,
@@ -129,30 +126,27 @@ function create(this: Phaser.Scene) {
       createBullet(gameState);
     }
   });
-  //////
   //
-  // //
+  //
+  //
 
-  //PHYSICS//
-  // ///
-  //
-  // /
+  //PHYSICS
+  (
+    gameState.player.sprite.body as Phaser.Physics.Arcade.Body
+  ).setCollideWorldBounds(true); //it can be either static or dynamic so hard typing that its dynamic
   this.physics.world.on("worldbounds", (body: Phaser.Physics.Arcade.Body) => {
     const bullet = body.gameObject as Bullet; // Get the bullet from the body
     if (bullet && bullet.active) {
       gameState.bullets.killAndHide(bullet);
     }
   });
-  ////
-  //
-  // ///
 }
-////////
 //
 //
-// //
+//
+//
 
-// UPDATE game state///////
+// UPDATE game state
 function update(this: Phaser.Scene) {
   const fps = this.game.loop.actualFps; // Get the current FPS
   fpsText.setText(`FPS: ${Math.round(fps)}`);
@@ -160,17 +154,14 @@ function update(this: Phaser.Scene) {
   ///GAME LOGIC////
   movePlayer(gameState.player);
 }
-////////
 //
 //
-// /
 //
-// //
+//
+//
+//
 
-//GAME FUNCTIONS//////
-
-// ////
-
+//GAME FUNCTIONS
 function movePlayer(player: Player) {
   const inputKeys = player.inputKeys; // Access the mapped keys
   let inputVec = new Phaser.Math.Vector2(0, 0);
@@ -182,7 +173,6 @@ function movePlayer(player: Player) {
     if (inputKeys.up.isDown) inputVec.y = -1;
     if (inputKeys.down.isDown) inputVec.y = 1;
   }
-  // NORMALIZE DIRECTION
   if (inputVec.lengthSq() > 0) {
     inputVec.normalize(); // makes diagonal movement same speed as straight
     inputVec.scale(player.moveSpeed); // apply player’s speed
@@ -228,8 +218,8 @@ function createEnemySpawner(
     loop: true,
     callback: () => {
       if (enemyGroup.countActive(true) < maxEnemies) {
-        const spawnX = Math.random() > 0.5 ? -50 : scene.scale.width + 50;
-        const spawnY = Math.random() * scene.scale.height;
+        const spawnX = Math.random() * scene.scale.width;
+        const spawnY = (Math.random() * scene.scale.height) / 2;
         const enemy = gameState.enemies.get(spawnX, spawnY, "enemy") as Enemy;
         enemyGroup.add(enemy);
       }
@@ -244,12 +234,13 @@ function createEnemySpawner(
   });
 }
 
-///////
 //
 //
 //
-// ///
-//HELPER FUNCTIONS//////// allows me to pass types to groups without classes
+//
+//
+//HELPER FUNCTIONS
+// allows me to pass types to groups without classes
 function configureBullet(bullet: Bullet) {
   bullet.damage = 10;
   bullet.moveSpeed = 300;
@@ -264,12 +255,12 @@ function configureEnemy(enemy: Enemy) {
   enemy.moveSpeed = 300;
 }
 
-////////
 //
 //
-// //
+//
+//
 
-//Game Configs//////////
+//Game Configs
 const config: Phaser.Types.Core.GameConfig = {
   type: AUTO,
   width: 1024,
