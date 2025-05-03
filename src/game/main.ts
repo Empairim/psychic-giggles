@@ -23,8 +23,8 @@ type Bullet = Phaser.Physics.Arcade.Sprite & {
 
 type GameState = {
   player: Player;
-  enemies: Phaser.GameObjects.Group;
-  bullets: Phaser.GameObjects.Group;
+  enemies: Phaser.Physics.Arcade.Group;
+  bullets: Phaser.Physics.Arcade.Group;
 };
 
 let gameState: GameState;
@@ -69,6 +69,7 @@ function create(this: Phaser.Scene) {
       health: 100,
     },
     enemies: this.physics.add.group({
+      classType: Phaser.Physics.Arcade.Sprite,
       createCallback: (enemy) => {
         configureEnemy(enemy as Enemy);
       },
@@ -79,6 +80,8 @@ function create(this: Phaser.Scene) {
       },
     }),
   };
+  createEnemySpawner(this, gameState.enemies);
+
   camera.startFollow(gameState.player.sprite);
   (
     gameState.player.sprite.body as Phaser.Physics.Arcade.Body
