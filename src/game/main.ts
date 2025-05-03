@@ -29,13 +29,24 @@ type GameState = {
 
 let gameState: GameState;
 let fpsText: Phaser.GameObjects.Text;
-//////////////////////
+/////////////
+//
+//
+//
+// ////
+//
+//
+// /////
 
 // PRELOAD assets//////
 function preload(this: Phaser.Scene) {
   // Load assets here (images, spritesheets, etc.)
+  this.load.image("background", "assets/bg.png");
 }
-
+//////
+//
+//
+// /
 //CREATE game Objects
 function create(this: Phaser.Scene) {
   //DEBUG TOOLS////////////////
@@ -53,13 +64,11 @@ function create(this: Phaser.Scene) {
     this.physics.world.bounds.width,
     this.physics.world.bounds.height
   );
-  /////////////////////////////////////
-
-  //MISC
-  let camera = this.cameras.main;
-  camera.setBackgroundColor(0x000000);
-
+  //////////
   //
+  //
+  //
+  // ///////////////////////////
 
   //GAME STATE OBJECTS
   gameState = {
@@ -81,12 +90,32 @@ function create(this: Phaser.Scene) {
     }),
   };
   createEnemySpawner(this, gameState.enemies);
+  /////
+  // ///
+  //
+  // /
+
+  /////VISUALS and FX MANAGERS////
+
+  // Camera Lights Shadow setup
+  this.lights.enable();
+  this.lights.addLight(512, 384, 400, 0xffffff, 1.5);
+
+  const camera = this.cameras.main;
+  camera.setBackgroundColor(0x000000);
+  let background = this.add.image(512, 384, "background");
+  background.setAlpha(0.5);
+  background.setPipeline("Light2D");
 
   camera.startFollow(gameState.player.sprite);
+  gameState.player.sprite.setPipeline("Light2D");
   (
     gameState.player.sprite.body as Phaser.Physics.Arcade.Body
   ).setCollideWorldBounds(true); //it can be either static or dynamic so hard typing that its dynamic
-  //KEY Inputs
+
+  //KEY Inputs//////
+  //
+  // /
   gameState.player.inputKeys = this.input.keyboard?.addKeys({
     up: Phaser.Input.Keyboard.KeyCodes.W,
     down: Phaser.Input.Keyboard.KeyCodes.S,
@@ -100,14 +129,28 @@ function create(this: Phaser.Scene) {
       createBullet(gameState);
     }
   });
+  //////
+  //
+  // //
+
+  //PHYSICS//
+  // ///
+  //
+  // /
   this.physics.world.on("worldbounds", (body: Phaser.Physics.Arcade.Body) => {
     const bullet = body.gameObject as Bullet; // Get the bullet from the body
     if (bullet && bullet.active) {
       gameState.bullets.killAndHide(bullet);
     }
   });
+  ////
+  //
+  // ///
 }
-//////////
+////////
+//
+//
+// //
 
 // UPDATE game state///////
 function update(this: Phaser.Scene) {
@@ -117,9 +160,16 @@ function update(this: Phaser.Scene) {
   ///GAME LOGIC////
   movePlayer(gameState.player);
 }
-///////////
+////////
+//
+//
+// /
+//
+// //
 
-//GAME FUNCTIONS//////////
+//GAME FUNCTIONS//////
+
+// ////
 
 function movePlayer(player: Player) {
   const inputKeys = player.inputKeys; // Access the mapped keys
@@ -194,7 +244,11 @@ function createEnemySpawner(
   });
 }
 
-//////////
+///////
+//
+//
+//
+// ///
 //HELPER FUNCTIONS//////// allows me to pass types to groups without classes
 function configureBullet(bullet: Bullet) {
   bullet.damage = 10;
@@ -209,9 +263,11 @@ function configureEnemy(enemy: Enemy) {
   enemy.health = 10;
   enemy.moveSpeed = 300;
 }
-//////////
 
-//////////////
+////////
+//
+//
+// //
 
 //Game Configs//////////
 const config: Phaser.Types.Core.GameConfig = {
