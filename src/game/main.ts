@@ -19,9 +19,11 @@ type Enemy = Phaser.Physics.Arcade.Sprite & {
 type Bullet = Phaser.Physics.Arcade.Sprite & {
   damage: number;
   moveSpeed: number;
+  hit?: boolean;
 };
 
 type GameState = {
+  scene: Phaser.Scene;
   player: Player;
   enemies: Phaser.Physics.Arcade.Group;
   bullets: Phaser.Physics.Arcade.Group;
@@ -68,6 +70,7 @@ function create(this: Phaser.Scene) {
 
   //GAME STATE OBJECTS
   gameState = {
+    scene: this,
     player: {
       sprite: this.physics.add.sprite(512, 384, "player"),
       moveSpeed: 200,
@@ -85,6 +88,7 @@ function create(this: Phaser.Scene) {
       },
     }),
   };
+  //Spawner
   createEnemySpawner(this, gameState.enemies);
 
   //
@@ -122,8 +126,19 @@ function create(this: Phaser.Scene) {
   //MOUSE Inputs
   gameState.player.pointer = this.input.activePointer;
   this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-    if (pointer.leftButtonDown()) {
-      createBullet(gameState);
+    const player = gameState.player;
+    const distance = Phaser.Math.Distance.Between(
+      player.sprite.x,
+      player.sprite.y,
+      pointer.worldX,
+      pointer.worldY
+    );
+
+    const meleeRange = 100; // Define melee range
+    if (distance <= meleeRange) {
+      meleeAttack(gameState); // Trigger melee attack
+    } else {
+      createBullet(gameState); // Trigger ranged attack
     }
   });
   //
@@ -140,6 +155,33 @@ function create(this: Phaser.Scene) {
       gameState.bullets.killAndHide(bullet);
     }
   });
+  // Persistent collision for bullets and enemies
+  this.physics.add.collider(
+    gameState.bullets,
+    gameState.enemies,
+    (bullet, enemy) => {
+      const bulletSprite = bullet as Bullet;
+
+      // Check if the bullet has already hit something
+      if (bulletSprite.hit) return;
+
+      bulletSprite.hit = true; // Mark the bullet as "used"
+
+      const enemySprite = enemy as Enemy;
+      enemySprite.health -= bulletSprite.damage;
+
+      if (enemySprite.health <= 0) {
+        enemySprite.destroy();
+      }
+
+      bulletSprite.setActive(false);
+      bulletSprite.setVisible(false);
+      (bulletSprite.body as Phaser.Physics.Arcade.Body).enable = false;
+
+      gameState.bullets.killAndHide(bulletSprite);
+    }
+  );
+  /////////
 }
 //
 //
@@ -148,10 +190,20 @@ function create(this: Phaser.Scene) {
 
 // UPDATE game state
 function update(this: Phaser.Scene) {
-  const fps = this.game.loop.actualFps; // Get the current FPS
+  // Get the current FPS/ DEBUG TOOLS
+  const fps = this.game.loop.actualFps;
   fpsText.setText(`FPS: ${Math.round(fps)}`);
+  //
+  //
+  //
+  //
+  //
 
   ///GAME LOGIC////
+  // Update the player's direction based on the mouse pointer
+  playerDirection(gameState);
+  //
+  //
   movePlayer(gameState.player);
   chase(gameState);
 }
@@ -184,18 +236,56 @@ function movePlayer(player: Player) {
 function createBullet(gameState: GameState) {
   const player = gameState.player.sprite;
   const pointer = gameState.player.pointer;
-  const bullet = gameState.bullets.get(player.x, player.y, "bullet") as Bullet;
-  if (bullet) {
-    bullet.setActive(true);
-    bullet.setVisible(true);
 
-    if (pointer) {
-      const angle = Phaser.Math.Angle.Between(
-        player.x,
-        player.y,
-        pointer.worldX, //more accurate
-        pointer.worldY //takes into account cam movement
-      );
+  // Calculate the angle between the player and the mouse pointer
+  if (pointer) {
+    const angle = Phaser.Math.Angle.Between(
+      player.x,
+      player.y,
+      pointer.worldX,
+      pointer.worldY
+    );
+
+    // Get the direction from the angle
+    const direction = getDirectionFromAngle(angle);
+
+    // Update the player's sprite or animation
+    switch (direction) {
+      case "up":
+        player.setTexture("player_up");
+        break;
+      case "down":
+        player.setTexture("player_down");
+        break;
+      case "left":
+        player.setTexture("player_left");
+        break;
+      case "right":
+        player.setTexture("player_right");
+        break;
+      case "up-left":
+        player.setTexture("player_up_left");
+        break;
+      case "up-right":
+        player.setTexture("player_up_right");
+        break;
+      case "down-left":
+        player.setTexture("player_down_left");
+        break;
+      case "down-right":
+        player.setTexture("player_down_right");
+        break;
+    }
+
+    // Fire the bullet
+    const bullet = gameState.bullets.get(
+      player.x,
+      player.y,
+      "bullet"
+    ) as Bullet;
+    if (bullet) {
+      bullet.setActive(true);
+      bullet.setVisible(true);
       bullet.setRotation(angle);
       bullet.setVelocity(
         Math.cos(angle) * bullet.moveSpeed,
@@ -255,6 +345,103 @@ function createEnemySpawner(
   });
 }
 
+function meleeAttack(gameState: GameState) {
+  const scene = gameState.scene;
+  const player = gameState.player;
+  const pointer = gameState.player.pointer;
+
+  // Calculate the angle between the player and the mouse pointer
+  if (pointer) {
+    const angle = Phaser.Math.Angle.Between(
+      player.sprite.x,
+      player.sprite.y,
+      pointer.worldX,
+      pointer.worldY
+    );
+
+    // Get the direction from the angle
+    const direction = getDirectionFromAngle(angle);
+
+    // Update the player's sprite or animation
+    switch (direction) {
+      case "up":
+        player.sprite.setTexture("player_up");
+        break;
+      case "down":
+        player.sprite.setTexture("player_down");
+        break;
+      case "left":
+        player.sprite.setTexture("player_left");
+        break;
+      case "right":
+        player.sprite.setTexture("player_right");
+        break;
+      case "up-left":
+        player.sprite.setTexture("player_up_left");
+        break;
+      case "up-right":
+        player.sprite.setTexture("player_up_right");
+        break;
+      case "down-left":
+        player.sprite.setTexture("player_down_left");
+        break;
+      case "down-right":
+        player.sprite.setTexture("player_down_right");
+        break;
+    }
+
+    // Create a temporary hitbox for the melee attack
+    const hitbox = scene.add.zone(player.sprite.x, player.sprite.y, 50, 50);
+    scene.physics.world.enable(hitbox);
+
+    // Offset the hitbox based on the direction
+    switch (direction) {
+      case "up":
+        hitbox.y -= 30;
+        break;
+      case "down":
+        hitbox.y += 30;
+        break;
+      case "left":
+        hitbox.x -= 30;
+        break;
+      case "right":
+        hitbox.x += 30;
+        break;
+      case "up-left":
+        hitbox.x -= 30;
+        hitbox.y -= 30;
+        break;
+      case "up-right":
+        hitbox.x += 30;
+        hitbox.y -= 30;
+        break;
+      case "down-left":
+        hitbox.x -= 30;
+        hitbox.y += 30;
+        break;
+      case "down-right":
+        hitbox.x += 30;
+        hitbox.y += 30;
+        break;
+    }
+
+    // Check for overlaps with enemies
+    scene.physics.add.overlap(hitbox, gameState.enemies, (_, enemy) => {
+      const enemySprite = enemy as Enemy;
+      enemySprite.health -= 10;
+
+      if (enemySprite.health <= 0) {
+        enemySprite.destroy();
+      }
+    });
+
+    // Destroy the hitbox after a short delay
+    scene.time.delayedCall(200, () => {
+      hitbox.destroy();
+    });
+  }
+}
 //
 //
 //
@@ -268,14 +455,80 @@ function configureBullet(bullet: Bullet) {
 
   (bullet.body as Phaser.Physics.Arcade.Body).setCollideWorldBounds(true);
   (bullet.body as Phaser.Physics.Arcade.Body).onWorldBounds = true; // Trigger events when hitting world bounds
+
   (bullet.body as Phaser.Physics.Arcade.Body).enable = true;
 }
 
 function configureEnemy(enemy: Enemy) {
   enemy.health = 10;
-  enemy.moveSpeed = 300;
+  enemy.moveSpeed = 100;
+
+  (enemy.body as Phaser.Physics.Arcade.Body).setImmovable(true);
 }
 
+function getDirectionFromAngle(angle: number): string {
+  // Convert angle to degrees
+  const degrees = Phaser.Math.RadToDeg(angle);
+
+  // Map the angle to one of 8 directions
+  if (degrees >= -22.5 && degrees < 22.5) return "right";
+  if (degrees >= 22.5 && degrees < 67.5) return "down-right";
+  if (degrees >= 67.5 && degrees < 112.5) return "down";
+  if (degrees >= 112.5 && degrees < 157.5) return "down-left";
+  if (degrees >= 157.5 || degrees < -157.5) return "left";
+  if (degrees >= -157.5 && degrees < -112.5) return "up-left";
+  if (degrees >= -112.5 && degrees < -67.5) return "up";
+  if (degrees >= -67.5 && degrees < -22.5) return "up-right";
+
+  return "right"; // Default to right
+}
+
+function playerDirection(gameState: GameState) {
+  const player = gameState.player.sprite;
+  const pointer = gameState.player.pointer;
+
+  // Calculate the angle between the player and the mouse pointer
+
+  if (pointer) {
+    const angle = Phaser.Math.Angle.Between(
+      player.x,
+      player.y,
+      pointer.worldX,
+      pointer.worldY
+    );
+
+    // Get the direction from the angle
+    const direction = getDirectionFromAngle(angle);
+
+    // Update the player's sprite or animation based on the direction
+    switch (direction) {
+      case "up":
+        player.setTexture("player_up"); // Replace with your up-facing sprite or animation
+        break;
+      case "down":
+        player.setTexture("player_down");
+        break;
+      case "left":
+        player.setTexture("player_left");
+        break;
+      case "right":
+        player.setTexture("player_right");
+        break;
+      case "up-left":
+        player.setTexture("player_up_left");
+        break;
+      case "up-right":
+        player.setTexture("player_up_right");
+        break;
+      case "down-left":
+        player.setTexture("player_down_left");
+        break;
+      case "down-right":
+        player.setTexture("player_down_right");
+        break;
+    }
+  }
+}
 //
 //
 //
