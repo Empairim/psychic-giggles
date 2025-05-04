@@ -153,6 +153,7 @@ function update(this: Phaser.Scene) {
 
   ///GAME LOGIC////
   movePlayer(gameState.player);
+  chase(gameState);
 }
 //
 //
@@ -202,6 +203,26 @@ function createBullet(gameState: GameState) {
       );
     }
   }
+}
+
+function chase(gameState: GameState) {
+  const player = gameState.player.sprite;
+  gameState.enemies.children.iterate((enemy) => {
+    const enemySprite = enemy as Enemy; // Cast to Enemy type
+    const angle = Phaser.Math.Angle.Between(
+      enemySprite.x,
+      enemySprite.y,
+      player.x,
+      player.y
+    );
+
+    enemySprite.setVelocity(
+      Math.cos(angle) * enemySprite.moveSpeed,
+      Math.sin(angle) * enemySprite.moveSpeed
+    );
+
+    return null; // Explicitly return null to satisfy the callback type
+  });
 }
 
 function createEnemySpawner(
